@@ -1,23 +1,35 @@
 let currentGesture = null;
 let gestureStartTime = null;
-const HOLD_DURATION = 1000; // 1 second
+let awaitingRelease = false;
+const HOLD_DURATION = 1000;
 
-export function checkHeldGesture(gesture, onConfirmed) {
-  if (!gesture) {
+export function checkHeldGesture(gestureType, onConfirmed, onProgress) {
+  if (!gestureType) {
     currentGesture = null;
     gestureStartTime = null;
+    awaitingRelease = false;
+    if (onProgress) onProgress(0, null);
     return;
   }
 
-  if (gesture !== currentGesture) {
-    currentGesture = gesture;
+  if (awaitingRelease && gestureType === currentGesture) {
+    if (onProgress) onProgress(1, gestureType);
+    return;
+  }
+
+  if (gestureType !== currentGesture) {
+    currentGesture = gestureType;
     gestureStartTime = Date.now();
-  } else {
-    const elapsed = Date.now() - gestureStartTime;
-    if (elapsed >= HOLD_DURATION) {
-      onConfirmed(gesture);
-      currentGesture = null; // reset so it doesn't fire repeatedly
-      gestureStartTime = null;
-    }
+    awaitingRelease = false;
+  }
+
+  const elapsed = Date.now() - gestureStartTime;
+  const progress = Math.min(elapsed / HOLD_DURATION, 1);
+
+  if (onProgress) onProgress(progress, gestureType);
+
+  if (progress >= 1 && !awaitingRelease) {
+    onConfirmed(gestureType);
+    awaitingRelease = true;
   }
 }

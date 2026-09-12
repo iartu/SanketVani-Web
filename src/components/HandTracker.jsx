@@ -4,7 +4,7 @@ import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HAND_CONNECTIONS } from "@mediapipe/hands";
 
-function HandTracker({ onLandmarks }) {
+function HandTracker({ onLandmarks, onHandStatusChange }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -22,26 +22,24 @@ function HandTracker({ onLandmarks }) {
     });
 
     hands.onResults((results) => {
-      const canvasCtx = canvasRef.current.getContext("2d");
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  const canvasCtx = canvasRef.current.getContext("2d");
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-      if (results.multiHandLandmarks) {
-        for (const landmarks of results.multiHandLandmarks) {
-          drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-            color: "#00FFB2",
-            lineWidth: 3,
-          });
-          drawLandmarks(canvasCtx, landmarks, {
-            color: "#FF0066",
-            lineWidth: 1,
-          });
+  const handFound = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
 
-          if (onLandmarks) onLandmarks(landmarks);
-        }
-      }
-      canvasCtx.restore();
-    });
+  if (handFound) {
+    for (const landmarks of results.multiHandLandmarks) {
+      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: "#00FFB2", lineWidth: 3 });
+      drawLandmarks(canvasCtx, landmarks, { color: "#FF0066", lineWidth: 1 });
+      if (onLandmarks) onLandmarks(landmarks);
+    }
+  }
+
+  if (onHandStatusChange) onHandStatusChange(handFound); // NEW
+
+  canvasCtx.restore();
+});
 
     const camera = new Camera(videoRef.current, {
       onFrame: async () => {

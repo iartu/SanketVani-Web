@@ -1,10 +1,5 @@
-// Wraps the browser's native text-to-speech API, with explicit voice
-// matching. Two known browser quirks handled here:
-// 1. getVoices() often returns [] synchronously right after page load —
-//    voices load asynchronously, so we wait for the 'voiceschanged' event.
-// 2. Even with the right voice, whether Hindi/Marathi actually sound right
-//    depends on what voices are installed on the user's OS/browser — that's
-//    a real limitation, not something code can fully paper over.
+import { useState, useRef, useCallback } from "react";
+
 let cachedVoices = [];
 let voicesLoadedPromise = null;
 
@@ -28,30 +23,54 @@ function loadVoices() {
 }
 
 export function useSpeechSynthesis() {
-  const speak = async (text, langCode) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const currentUtteranceRef = useRef(null);
+
+  const speak = useCallback(async (text, langCode) => {
     if (!window.speechSynthesis) return;
 
     const voices = cachedVoices.length > 0 ? cachedVoices : await loadVoices();
-
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = langCode;
 
     const exactMatch = voices.find((v) => v.lang === langCode);
     const looseMatch = voices.find((v) => v.lang.startsWith(langCode.split("-")[0]));
     const voice = exactMatch || looseMatch;
 
-    if (voice) {
-      utter.voice = voice;
-    } else if (langCode !== "en-IN") {
+    if (!voice && langCode !== "en-IN") {
       console.warn(
-        `No installed voice found for ${langCode}. Falling back to the browser's default voice — ` +
-          `this is a browser/OS limitation (missing language pack), not an app bug. ` +
-          `Run speechSynthesis.getVoices() in the console to see what's available.`
+        `No installed voice found for ${langCode}. Falling back to the browser's default voice.`
       );
     }
 
-    window.speechSynthesis.speak(utter);
-  };
+    window.speechSynthesis.cancel();
 
-  return { speak };
+    // NEW — Chrome has a known bug where speak() called immediately after
+    // cancel() can silently fail to produce audio, especially when the new
+    // utterance uses a different voice/language than whatever was just
+    // cancelled. A tiny delay lets Chrome fully reset before speaking again.
+    setTimeout(() => {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = langCode;
+      if (voice) utter.voice = voice;
+
+      currentUtteranceRef.current = utter;
+
+      utter.onstart = () => {
+        setIsSpeaking(true);
+      };
+
+      utter.onend = () => {
+        setIsSpeaking(false);
+        currentUtteranceRef.current = null;
+      };
+
+      utter.onerror = () => {
+        setIsSpeaking(false);
+        currentUtteranceRef.current = null;
+      };
+
+      window.speechSynthesis.speak(utter);
+    }, 100); // 100ms is enough for Chrome to reset; imperceptible to the user
+  }, []);
+
+  return { speak, isSpeaking };
 }

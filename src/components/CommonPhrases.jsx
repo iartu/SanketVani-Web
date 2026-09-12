@@ -7,10 +7,13 @@ export default function CommonPhrases({ onTap }) {
   const [name, setName] = useState("");
 
   const handleTap = (phrase) => {
-    // Pass the raw template + name separately — translation happens on the
-    // template ("My name is {name}.") BEFORE substitution, so the {name}
-    // placeholder still matches the translation dictionary key exactly.
     onTap(phrase.text, phrase.needsName ? name || "friend" : null);
+
+    // NEW — clear the name field right after it's used, so a stale name
+    // doesn't accidentally get reused in a later, unrelated tap.
+    if (phrase.needsName) {
+      setName("");
+    }
   };
 
   return (

@@ -3,13 +3,21 @@ import { checkHeldGesture } from "./gestureHoldTimer";
 import { saveSession } from "../services/sessionService";
 import { MODES } from "./modeManager";
 
-// This is the function Person A imports and calls
-export function processLandmarks(landmarks, currentMode, onGestureConfirmed) {
-  const gestureType = detectGesture(landmarks);
+// detectGesture now returns { type, label, confidence } instead of a plain
+// string — result.type is what gets passed to the hold-timer, and the full
+// result object is passed to onLiveDetection for the UI's live badge.
+export function processLandmarks(landmarks, currentMode, onGestureConfirmed, onProgress, onLiveDetection) {
+  const result = detectGesture(landmarks); // { type, label, confidence }
 
-  checkHeldGesture(gestureType, (confirmedType) => {
-    const phraseText = MODES[currentMode].gestures[confirmedType];
-    saveSession(phraseText, currentMode);
-    onGestureConfirmed(phraseText); // <-- Person A's callback fires here
-  });
+  if (onLiveDetection) onLiveDetection(result);
+
+  checkHeldGesture(
+    result.type,
+    (confirmedType) => {
+      const phraseText = MODES[currentMode].gestures[confirmedType];
+      saveSession(phraseText, currentMode);
+      onGestureConfirmed(phraseText);
+    },
+    onProgress
+  );
 }

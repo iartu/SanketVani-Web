@@ -6,6 +6,7 @@ import GestureCaptions from "./GestureCaptions";
 import EmergencyCards from "./EmergencyCards";
 import CommonPhrases from "./CommonPhrases";
 import TranscriptLog from "./TranscriptLog";
+import GestureLegend from "./GestureLegend";
 
 export default function SessionPanel({
   viewerMode,
@@ -31,9 +32,11 @@ export default function SessionPanel({
         <ViewerToggle viewerMode={viewerMode} setViewerMode={setViewerMode} />
       </div>
 
-      {/* min-h-0 here is what lets this scroll internally instead of the
-          whole panel (and the video box next to it) growing with content */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 min-h-0">
+        {/* NEW — collapsible reference guide, especially useful for the
+            hearing person seeing gestures for the first time */}
+        <GestureLegend />
+
         {viewerMode === "deaf" ? (
           <LiveCaptions captions={captions} />
         ) : (
