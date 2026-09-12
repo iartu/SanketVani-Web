@@ -32,12 +32,17 @@ export default function App() {
   const { speak, isSpeaking } = useSpeechSynthesis();
   const { transcript, logToTranscript, exportTranscript } = useTranscript();
 
-  const { captions, captionsError, startListening, stopListening, simulateIncomingSpeech } = useLiveCaptions(
+  const handleCaption = useCallback(
     (text) => {
       logToTranscript(text, "Caption");
-    }
+    },
+    [logToTranscript]
   );
 
+  const { captions, captionsError, startListening, stopListening, simulateIncomingSpeech } = useLiveCaptions(
+    handleCaption
+  );
+  
   useEffect(() => {
     if (tracking) {
       startListening();
