@@ -17,7 +17,10 @@ export default function TranscriptLog({ transcript }) {
               </span>
               <span
                 className="text-xs font-semibold shrink-0"
-                style={{ color: t.source === "Emergency" ? theme.danger : theme.accent }}
+                style={{
+                  color:
+                    t.source === "Emergency" ? theme.danger : t.source === "Caption" ? theme.success : theme.accent,
+                }}
               >
                 {t.source}:
               </span>

@@ -1,11 +1,19 @@
-import { useState } from "react";
-import { Mic, Video, Volume2, HandMetal } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, Volume2, HandMetal } from "lucide-react";
 import { theme } from "../theme";
 import HandTracker from "./HandTracker";
 
-export default function WebcamPanel({ tracking, setTracking, onLandmarks, isSpeaking, liveDetection }) {
-  const [handDetected, setHandDetected] = useState(true);
-
+export default function WebcamPanel({
+  tracking,
+  setTracking,
+  onLandmarks,
+  isSpeaking,
+  liveDetection,
+  viewerMode,
+  micOn,
+  setMicOn,
+  handDetected,
+  setHandDetected,
+}) {
   return (
     <div
       className="relative flex-1 rounded-2xl overflow-hidden flex items-center justify-center min-h-[380px]"
@@ -24,7 +32,9 @@ export default function WebcamPanel({ tracking, setTracking, onLandmarks, isSpea
         </p>
       )}
 
-      {tracking && !handDetected && (
+      {/* FIX: only nag about showing a hand when someone is actually meant to
+          be signing (deaf/mute viewer mode) — irrelevant in hearing mode */}
+      {tracking && !handDetected && viewerMode === "deaf" && (
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{ background: "rgba(0,0,0,0.55)" }}
@@ -51,7 +61,6 @@ export default function WebcamPanel({ tracking, setTracking, onLandmarks, isSpea
         {tracking ? "Live" : "Paused"}
       </div>
 
-      {/* Live confidence readout, top-left below the Live/Paused badge */}
       {tracking && liveDetection && liveDetection.type && (
         <div
           className="absolute top-12 left-4 flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full"
@@ -76,12 +85,30 @@ export default function WebcamPanel({ tracking, setTracking, onLandmarks, isSpea
         className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-full"
         style={{ background: "rgba(20,22,25,0.85)", border: `1px solid ${theme.panelBorder}` }}
       >
-        <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: theme.panel }}>
-          <Mic size={15} style={{ color: theme.textMuted }} />
-        </div>
-        <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: theme.panel }}>
-          <Video size={15} style={{ color: theme.textMuted }} />
-        </div>
+        {/* FIX: mic button now actually mutes/unmutes caption listening,
+            independent of the camera — you can stop listening without
+            stopping hand tracking */}
+        <button
+          onClick={() => setMicOn((m) => !m)}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: micOn ? theme.panel : theme.danger }}
+          title={micOn ? "Mute microphone" : "Unmute microphone"}
+        >
+          {micOn ? <Mic size={15} style={{ color: theme.textMuted }} /> : <MicOff size={15} color="#0B0D0F" />}
+        </button>
+
+        {/* FIX: camera icon now toggles the same tracking state as the main
+            button — turning off video means no gesture data anyway, so
+            these two controls should always be in sync */}
+        <button
+          onClick={() => setTracking((t) => !t)}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: tracking ? theme.panel : theme.danger }}
+          title={tracking ? "Stop camera" : "Start camera"}
+        >
+          {tracking ? <Video size={15} style={{ color: theme.textMuted }} /> : <VideoOff size={15} color="#0B0D0F" />}
+        </button>
+
         <button
           onClick={() => setTracking((t) => !t)}
           className="px-4 h-9 rounded-full text-sm font-medium"

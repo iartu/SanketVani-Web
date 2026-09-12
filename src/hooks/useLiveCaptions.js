@@ -1,13 +1,21 @@
 import { useState, useRef, useCallback } from "react";
 
-export function useLiveCaptions() {
+// onCaption(text) is called every time a new caption arrives, IN ADDITION
+// to updating the local `captions` list used for on-screen display. This is
+// what lets the shared transcript (and therefore Export) include what the
+// hearing person said, not just gestures/emergency/phrase taps.
+export function useLiveCaptions(onCaption) {
   const [captions, setCaptions] = useState([]);
   const recognitionRef = useRef(null);
-  const shouldBeListeningRef = useRef(false); // tracks intent, so we know whether to auto-restart
+  const shouldBeListeningRef = useRef(false);
 
-  const addCaption = useCallback((text) => {
-    setCaptions((prev) => [...prev, { text, time: new Date().toLocaleTimeString() }]);
-  }, []);
+  const addCaption = useCallback(
+    (text) => {
+      setCaptions((prev) => [...prev, { text, time: new Date().toLocaleTimeString() }]);
+      if (onCaption) onCaption(text);
+    },
+    [onCaption]
+  );
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -27,9 +35,6 @@ export function useLiveCaptions() {
       addCaption(text);
     };
 
-    // Chrome frequently stops recognition after a pause in speech, even with
-    // continuous:true. If we're still supposed to be listening, restart it
-    // automatically so captions don't silently die mid-conversation.
     recognition.onend = () => {
       if (shouldBeListeningRef.current) {
         recognition.start();
@@ -45,11 +50,10 @@ export function useLiveCaptions() {
   }, [addCaption]);
 
   const stopListening = useCallback(() => {
-    shouldBeListeningRef.current = false; // prevents onend from restarting it
+    shouldBeListeningRef.current = false;
     recognitionRef.current?.stop();
   }, []);
 
-  // For demo/testing without a working mic setup
   const simulateIncomingSpeech = (text) => addCaption(text);
 
   return { captions, startListening, stopListening, simulateIncomingSpeech };
