@@ -1,8 +1,12 @@
 import React, { useEffect, useRef } from "react";
-import { Hands } from "@mediapipe/hands";
-import { Camera } from "@mediapipe/camera_utils";
-import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
-import { HAND_CONNECTIONS } from "@mediapipe/hands";
+
+// @mediapipe/hands, camera_utils, and drawing_utils ship as UMD globals,
+// not real ES modules — importing them breaks under Vite's production
+// build ("Hands is not a constructor"). Loaded as <script> tags in
+// index.html instead, and read here off window.
+const { Hands, HAND_CONNECTIONS } = window;
+const { Camera } = window;
+const { drawConnectors, drawLandmarks } = window;
 
 function HandTracker({ onLandmarks, onHandStatusChange }) {
   const videoRef = useRef(null);
