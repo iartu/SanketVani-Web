@@ -16,7 +16,6 @@ export default function App() {
   const [tracking, setTracking] = useState(false);
   const [viewerMode, setViewerMode] = useState("deaf");
   const [liveDetection, setLiveDetection] = useState({ type: null, label: null, confidence: 0 });
-  const [micOn, setMicOn] = useState(true);
   const [handDetected, setHandDetected] = useState(true);
 
   const modeRef = useRef(mode);
@@ -33,22 +32,20 @@ export default function App() {
   const { speak, isSpeaking } = useSpeechSynthesis();
   const { transcript, logToTranscript, exportTranscript } = useTranscript();
 
-  // FIX: every live caption (hearing person's speech, via STT) now also
-  // gets logged to the shared transcript, tagged "Caption" — so Export
-  // includes the full two-way conversation, not just gesture/emergency/
-  // phrase output from the deaf/mute side.
-  const { captions, startListening, stopListening } = useLiveCaptions((text) => {
-    logToTranscript(text, "Caption");
-  });
+  const { captions, captionsError, startListening, stopListening, simulateIncomingSpeech } = useLiveCaptions(
+    (text) => {
+      logToTranscript(text, "Caption");
+    }
+  );
 
   useEffect(() => {
-    if (tracking && micOn) {
+    if (tracking) {
       startListening();
     } else {
       stopListening();
     }
     return () => stopListening();
-  }, [tracking, micOn, startListening, stopListening]);
+  }, [tracking, startListening, stopListening]);
 
   const handleLandmarks = useCallback(
     (landmarks) => {
@@ -78,6 +75,12 @@ export default function App() {
     logToTranscript(name ? template.replace("{name}", name) : template, "Phrase");
   };
 
+  // Manual typed caption — lives on the "I'm Hearing" screen now, since the
+  // hearing person is who'd realistically type what they just said.
+  const handleManualCaption = (text) => {
+    simulateIncomingSpeech(text);
+  };
+
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden" style={{ background: theme.bg, color: theme.textPrimary }}>
       <TopBar mode={mode} setMode={setMode} language={language} setLanguage={setLanguage} />
@@ -91,8 +94,6 @@ export default function App() {
             isSpeaking={isSpeaking}
             liveDetection={liveDetection}
             viewerMode={viewerMode}
-            micOn={micOn}
-            setMicOn={setMicOn}
             handDetected={handDetected}
             setHandDetected={setHandDetected}
           />
@@ -102,9 +103,11 @@ export default function App() {
           viewerMode={viewerMode}
           setViewerMode={setViewerMode}
           captions={captions}
+          captionsError={captionsError}
           transcript={transcript}
           onEmergencyTap={handleEmergencyTap}
           onCommonPhraseTap={handleCommonPhraseTap}
+          onManualCaption={handleManualCaption}
           onExport={exportTranscript}
         />
       </main>

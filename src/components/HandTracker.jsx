@@ -43,12 +43,13 @@ function HandTracker({ onLandmarks, onHandStatusChange }) {
 
     const camera = new Camera(videoRef.current, {
       onFrame: async () => {
+        if (!videoRef.current) return;
         await hands.send({ image: videoRef.current });
       },
       width: 640,
       height: 480,
     });
-    camera.start();
+    camera.start(); 
 
     return () => {
       camera.stop();

@@ -1,16 +1,19 @@
 import { useState, useRef, useCallback } from "react";
 
-// onCaption(text) is called every time a new caption arrives, IN ADDITION
-// to updating the local `captions` list used for on-screen display. This is
-// what lets the shared transcript (and therefore Export) include what the
-// hearing person said, not just gestures/emergency/phrase taps.
+const MAX_CONSECUTIVE_FAILURES = 3;
+const RESTART_DELAY_MS = 500;
+
 export function useLiveCaptions(onCaption) {
   const [captions, setCaptions] = useState([]);
+  const [captionsError, setCaptionsError] = useState(null);
   const recognitionRef = useRef(null);
   const shouldBeListeningRef = useRef(false);
+  const failureCountRef = useRef(0);
 
   const addCaption = useCallback(
     (text) => {
+      failureCountRef.current = 0;
+      setCaptionsError(null);
       setCaptions((prev) => [...prev, { text, time: new Date().toLocaleTimeString() }]);
       if (onCaption) onCaption(text);
     },
@@ -21,6 +24,7 @@ export function useLiveCaptions(onCaption) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       console.warn("SpeechRecognition not supported in this browser. Try Chrome.");
+      setCaptionsError("unsupported");
       return;
     }
 
@@ -36,13 +40,27 @@ export function useLiveCaptions(onCaption) {
     };
 
     recognition.onend = () => {
-      if (shouldBeListeningRef.current) {
-        recognition.start();
+      if (!shouldBeListeningRef.current) return;
+
+      if (failureCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
+        console.warn(
+          `SpeechRecognition failed ${MAX_CONSECUTIVE_FAILURES} times in a row — giving up. Use the manual caption input instead.`
+        );
+        setCaptionsError("network");
+        shouldBeListeningRef.current = false;
+        return;
       }
+
+      setTimeout(() => {
+        if (shouldBeListeningRef.current) recognition.start();
+      }, RESTART_DELAY_MS);
     };
 
     recognition.onerror = (event) => {
       console.warn("SpeechRecognition error:", event.error);
+      if (event.error === "network" || event.error === "aborted" || event.error === "not-allowed") {
+        failureCountRef.current += 1;
+      }
     };
 
     recognition.start();
@@ -51,10 +69,12 @@ export function useLiveCaptions(onCaption) {
 
   const stopListening = useCallback(() => {
     shouldBeListeningRef.current = false;
+    failureCountRef.current = 0;
+    setCaptionsError(null);
     recognitionRef.current?.stop();
   }, []);
 
   const simulateIncomingSpeech = (text) => addCaption(text);
 
-  return { captions, startListening, stopListening, simulateIncomingSpeech };
+  return { captions, captionsError, startListening, stopListening, simulateIncomingSpeech };
 }

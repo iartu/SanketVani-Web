@@ -12,9 +12,11 @@ export default function SessionPanel({
   viewerMode,
   setViewerMode,
   captions,
+  captionsError,
   transcript,
   onEmergencyTap,
   onCommonPhraseTap,
+  onManualCaption,
   onExport,
 }) {
   return (
@@ -38,9 +40,9 @@ export default function SessionPanel({
         <GestureLegend />
 
         {viewerMode === "deaf" ? (
-          <LiveCaptions captions={captions} />
+          <LiveCaptions captions={captions} captionsError={captionsError} />
         ) : (
-          <GestureCaptions transcript={transcript} />
+          <GestureCaptions transcript={transcript} onManualCaption={onManualCaption} />
         )}
         <EmergencyCards onTap={onEmergencyTap} />
         <CommonPhrases onTap={onCommonPhraseTap} />
